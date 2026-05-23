@@ -293,24 +293,18 @@ async function startScanner(){
   }
 
   await scanner.start(
-    cameraId,
-      {
-        fps: 15,
-        qrbox: {
-          width: 240,
-          height: 240
-        },
-        aspectRatio: 1.0,
-        disableFlip: false,
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        }
-      }
-    },
-    function(decodedText){
-      validateQr(decodedText);
+  cameraId,
+  {
+    fps: 15,
+    qrbox: {
+      width: 240,
+      height: 240
     }
-  );
+  },
+  function(decodedText){
+    validateQr(decodedText);
+  }
+);
 
   setStatus("Scanner ready.");
 }
