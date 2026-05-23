@@ -182,7 +182,10 @@ function showResult(res){
     if(navigator.vibrate) navigator.vibrate([400,120,400]);
   }
 
+  setTimeout(function(){
   busy = false;
+  setStatus("Ready for next scan.");
+}, 2500);
 }
 
 function jsonpValidate(url){
@@ -216,7 +219,7 @@ async function validateQr(qr){
 
   if(busy) return;
 
-  if(qr === lastQr && (now - lastScan) < 3000){
+  if(qr === lastQr && (now - lastScan) < 6000){
     return;
   }
 
