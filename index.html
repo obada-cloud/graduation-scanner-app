@@ -127,7 +127,9 @@ body{
       <div id="resultStudent" class="resultText"></div>
       <div id="resultCard" class="resultText"></div>
     </div>
-
+    <button id="nextBtn" class="btn" style="display:none;margin-top:12px;" onclick="nextScan()">
+      NEXT SCAN
+    </button>
   </div>
 </div>
 
@@ -182,10 +184,8 @@ function showResult(res){
     if(navigator.vibrate) navigator.vibrate([400,120,400]);
   }
 
-  setTimeout(function(){
-  busy = false;
-  setStatus("Ready for next scan.");
-}, 2500);
+document.getElementById("nextBtn").style.display = "block";
+setStatus("Tap NEXT SCAN when ready.");
 }
 
 function jsonpValidate(url){
@@ -309,6 +309,13 @@ async function startScanner(){
   );
 
   setStatus("Scanner ready.");
+}
+
+function nextScan(){
+  document.getElementById("resultBox").style.display = "none";
+  document.getElementById("nextBtn").style.display = "none";
+  busy = false;
+  setStatus("Ready for next scan.");
 }
 </script>
 
