@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+<title>Graduation QR Scanner</title>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:#eef2f6;
+  color:#173247;
+}
+
+.topBar{
+  background:#7B1E1E;
+  color:#fff;
+  padding:18px 16px;
+  text-align:center;
+  font-size:22px;
+  font-weight:900;
+}
+
+.wrap{
+  max-width:520px;
+  margin:auto;
+  padding:12px;
+}
+
+.card{
+  background:#fff;
+  border-radius:24px;
+  padding:14px;
+  box-shadow:0 10px 24px rgba(0,0,0,.10);
+}
+
+input{
+  width:100%;
+  padding:14px;
+  border-radius:14px;
+  border:1px solid #d7dce2;
+  font-size:16px;
+  margin-bottom:10px;
+}
+
+.btn{
+  width:100%;
+  border:0;
+  border-radius:14px;
+  padding:15px;
+  font-size:16px;
+  font-weight:900;
+  background:#7B1E1E;
+  color:#fff;
+  cursor:pointer;
+}
+
+#reader{
+  width:100%;
+  min-height:340px;
+  background:#eef2f5;
+  border-radius:18px;
+  overflow:hidden;
+  margin-top:12px;
+}
+
+.resultBox{
+  margin-top:14px;
+  border-radius:20px;
+  padding:18px;
+  text-align:center;
+  display:none;
+  border:3px solid transparent;
+}
+
+.allowed{
+  background:#e7f7eb;
+  border-color:#2e7d32;
+  color:#1b5e20;
+}
+
+.denied{
+  background:#fdeaea;
+  border-color:#c62828;
+  color:#8e0000;
+}
+
+.resultTitle{
+  font-size:34px;
+  font-weight:900;
+}
+
+.resultText{
+  margin-top:8px;
+  font-size:15px;
+  line-height:1.5;
+  font-weight:700;
+}
+
+.status{
+  margin-top:10px;
+  text-align:center;
+  font-size:12px;
+  color:#60788b;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topBar">
+  Graduation QR Scanner
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+
+    <input
+      id="scannerCode"
+      type="password"
+      placeholder="Enter Scanner Access Code"
+    >
+
+    <button class="btn" onclick="startScanner()">
+      Start Scanner
+    </button>
+
+    <div id="reader"></div>
+
+    <div class="status" id="statusText">
+      Scanner is not started.
+    </div>
+
+    <div id="resultBox" class="resultBox">
+      <div id="resultTitle" class="resultTitle"></div>
+      <div id="resultReason" class="resultText"></div>
+      <div id="resultStudent" class="resultText"></div>
+      <div id="resultCard" class="resultText"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+const API_URL =
+"PASTE_YOUR_EXEC_URL_HERE?page=scanapi";
+
+let scanner = null;
+let busy = false;
+let lastQr = "";
+let lastScan = 0;
+
+function setStatus(t){
+  document.getElementById("statusText").innerText = t || "";
+}
+
+function showResult(res){
+
+  const box = document.getElementById("resultBox");
+
+  box.style.display = "block";
+
+  document.getElementById("resultTitle").innerText =
+    res.scanResult || "DENIED";
+
+  document.getElementById("resultReason").innerText =
+    res.reason || "";
+
+  if(res.card){
+    document.getElementById("resultStudent").innerText =
+      (res.card.studentName || "") +
+      " • " +
+      (res.card.currentOwnerStudentNumber || "");
+
+    document.getElementById("resultCard").innerText =
+      "Card: " +
+      (res.card.cardNumber || "");
+  }else{
+    document.getElementById("resultStudent").innerText = "";
+    document.getElementById("resultCard").innerText = "";
+  }
+
+  if(res.scanResult === "ALLOWED"){
+    box.className = "resultBox allowed";
+    if(navigator.vibrate) navigator.vibrate(120);
+  }else{
+    box.className = "resultBox denied";
+    if(navigator.vibrate) navigator.vibrate([250,100,250]);
+  }
+
+  busy = false;
+}
+
+async function validateQr(qr){
+
+  const now = Date.now();
+
+  if(busy) return;
+
+  if(qr === lastQr && (now-lastScan)<3000){
+    return;
+  }
+
+  busy = true;
+
+  lastQr = qr;
+  lastScan = now;
+
+  setStatus("Validating QR code...");
+
+  try{
+
+    const code =
+      document.getElementById("scannerCode").value.trim();
+
+    const url =
+      API_URL +
+      "&code=" + encodeURIComponent(code) +
+      "&qr=" + encodeURIComponent(qr);
+
+    const res =
+      await fetch(url);
+
+    const data =
+      await res.json();
+
+    showResult(data);
+
+    setStatus("Ready for next scan.");
+
+  }catch(err){
+
+    showResult({
+      scanResult:"DENIED",
+      reason:String(err || "")
+    });
+
+    setStatus("Validation failed.");
+  }
+}
+
+async function startScanner(){
+
+  const code =
+    document.getElementById("scannerCode").value.trim();
+
+  if(!code){
+    alert("Please enter scanner access code.");
+    return;
+  }
+
+  setStatus("Starting camera...");
+
+  if(scanner){
+    try{
+      await scanner.stop();
+      await scanner.clear();
+    }catch(e){}
+  }
+
+  scanner =
+    new Html5Qrcode("reader");
+
+  const cameras =
+    await Html5Qrcode.getCameras();
+
+  if(!cameras || !cameras.length){
+    throw new Error("No camera found.");
+  }
+
+  let cameraId =
+    cameras[0].id;
+
+  for(let i=0;i<cameras.length;i++){
+
+    const label =
+      String(cameras[i].label || "").toLowerCase();
+
+    if(
+      label.includes("back") ||
+      label.includes("rear") ||
+      label.includes("environment")
+    ){
+      cameraId = cameras[i].id;
+      break;
+    }
+  }
+
+  await scanner.start(
+    cameraId,
+    {
+      fps:10,
+      qrbox:{
+        width:260,
+        height:260
+      }
+    },
+    function(decodedText){
+      validateQr(decodedText);
+    }
+  );
+
+  setStatus("Scanner ready.");
+}
+
+</script>
+
+</body>
+</html>
