@@ -217,7 +217,7 @@ async function validateQr(qr){
 
   if(busy) return;
 
-  if(qr === lastQr && (now - lastScan) < 3000){
+  if(qr === lastQr && (now - lastScan) < 1000){
     return;
   }
 
