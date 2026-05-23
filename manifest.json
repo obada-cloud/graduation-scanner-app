@@ -1,0 +1,10 @@
+{
+  "name": "Graduation QR Scanner",
+  "short_name": "Grad Scanner",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#7B1E1E",
+  "theme_color": "#7B1E1E",
+  "orientation": "portrait",
+  "icons": []
+}
