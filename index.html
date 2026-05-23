@@ -226,11 +226,14 @@ async function validateQr(qr){
       throw new Error("Missing secure scanner session. Open scanner from DLM page.");
     }
 
-    const url =
-      APPS_SCRIPT_EXEC_URL +
-      "?page=scanapi" +
-      "&s=" + encodeURIComponent(SESSION_TOKEN) +
-      "&qr=" + encodeURIComponent(qr);
+  const parts = String(qr || "").split("|");
+  const cardIdOnly = parts.length >= 2 ? parts[1] : qr;
+  
+  const url =
+    APPS_SCRIPT_EXEC_URL +
+    "?page=scanapi" +
+    "&s=" + encodeURIComponent(SESSION_TOKEN) +
+    "&cardId=" + encodeURIComponent(cardIdOnly);
 
     const data = await jsonpValidate(url);
 
