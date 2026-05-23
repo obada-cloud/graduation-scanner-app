@@ -229,6 +229,9 @@ async function validateQr(qr){
   const parts = String(qr || "").split("|");
   const cardIdOnly = parts.length >= 2 ? parts[1] : qr;
   
+  const parts = String(qr || "").split("|");
+  const cardIdOnly = parts.length >= 2 ? parts[1] : String(qr || "").trim();
+  
   const url =
     APPS_SCRIPT_EXEC_URL +
     "?page=scanapi" +
