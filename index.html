@@ -211,61 +211,15 @@ function jsonpValidate(url){
   });
 }
 
-async function validateQr(qr){
-
-  const now = Date.now();
-
-  if(busy) return;
-
-  if(qr === lastQr && (now - lastScan) < 1000){
-    return;
-  }
-
-  busy = true;
-  lastQr = qr;
-  lastScan = now;
-
-  setStatus("Validating QR code...");
-
-  try{
-    if(!SESSION_TOKEN){
-      throw new Error("Missing secure scanner session. Open scanner from DLM page.");
-    }
-
-    const parts = String(qr || "").split("|");
-
-    const cardIdOnly = parts.length >= 2
-      ? parts[1]
-      : String(qr || "").trim();
-
-    const url =
-      APPS_SCRIPT_EXEC_URL +
-      "?page=scanapi" +
-      "&s=" + encodeURIComponent(SESSION_TOKEN) +
-      "&cardId=" + encodeURIComponent(cardIdOnly);
-
-    const isIphone =
-      /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    if(isIphone){
-      window.location.href =
-        url.replace("?page=scanapi", "?page=scanvalidate");
-      return;
-    }
-
-    const data = await jsonpValidate(url);
-
-    showResult(data);
-    setStatus("Ready for next scan.");
-
-  }catch(err){
-    showResult({
-      scanResult:"DENIED",
-      reason:String(err && err.message ? err.message : err)
-    });
-
-    setStatus("Validation failed.");
-  }
+async function validateQr(qr)
+{ const now = Date.now(); 
+ if(busy) return; if(qr === lastQr && (now - lastScan) < 1000){ return; } busy = true; lastQr = qr; 
+ lastScan = now; setStatus("Validating QR code..."); 
+ try{ if(!SESSION_TOKEN){ throw new Error("Missing secure scanner session. Open scanner from DLM page."); } 
+     const parts = String(qr || "").split("|"); const cardIdOnly = parts.length >= 2 ? parts[1] : String(qr || "").trim(); 
+     const url = APPS_SCRIPT_EXEC_URL + "?page=scanapi" + "&s=" + encodeURIComponent(SESSION_TOKEN) + "&cardId=" + encodeURIComponent(cardIdOnly); 
+     const data = await jsonpValidate(url); showResult(data); setStatus("Ready for next scan."); }
+ catch(err){ showResult({ scanResult:"DENIED", reason:String(err && err.message ? err.message : err) }); setStatus("Validation failed."); } 
 }
 
 async function startScanner(){
