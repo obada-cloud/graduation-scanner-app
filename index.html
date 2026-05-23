@@ -293,14 +293,19 @@ async function startScanner(){
   }
 
   await scanner.start(
-  cameraId,
-  {
-    fps: 10,
-    qrbox: {
-      width: 320,
-      height: 320
-    }
+{
+  fps: 12,
+  qrbox: {
+    width: 320,
+    height: 320
   },
+  aspectRatio: 1.0,
+  videoConstraints: {
+    facingMode: "environment",
+    width: { ideal: 1920 },
+    height: { ideal: 1080 }
+  }
+},
   function(decodedText){
     validateQr(decodedText);
   }
