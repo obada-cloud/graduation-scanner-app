@@ -244,6 +244,15 @@ async function validateQr(qr){
       "&s=" + encodeURIComponent(SESSION_TOKEN) +
       "&cardId=" + encodeURIComponent(cardIdOnly);
 
+    const isIphone =
+      /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if(isIphone){
+      window.location.href =
+        url.replace("?page=scanapi", "?page=scanvalidate");
+      return;
+    }
+
     const data = await jsonpValidate(url);
 
     showResult(data);
