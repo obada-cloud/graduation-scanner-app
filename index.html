@@ -53,11 +53,13 @@ body{
 
 #reader{
   width:100%;
-  min-height:340px;
+  max-width:300px;
+  height:300px;
+  margin:12px auto 0 auto;
   background:#eef2f5;
   border-radius:18px;
   overflow:hidden;
-  margin-top:12px;
+  border:3px solid #d9e0e7;
 }
 
 .resultBox{
@@ -104,10 +106,6 @@ body{
 
 <body>
 
-<div class="topBar">
-  Graduation QR Scanner
-</div>
-
 <div class="wrap">
   <div class="card">
 
@@ -127,7 +125,7 @@ body{
       <div id="resultStudent" class="resultText"></div>
       <div id="resultCard" class="resultText"></div>
     </div>
-    <button id="nextBtn" class="btn" style="display:none;margin-top:12px;" onclick="nextScan()">
+    <button id="nextBtn" class="btn" style="display:none;margin-top:18px;font-size:22px;padding:20px;" onclick="nextScan()">
       NEXT SCAN
     </button>
   </div>
