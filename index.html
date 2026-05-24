@@ -440,7 +440,6 @@ async function nextScan(){
 
   lastQr = "";
   lastScan = 0;
-
   busy = false;
   started = false;
 
@@ -456,7 +455,11 @@ async function nextScan(){
   document.getElementById("startBtn").disabled = false;
   document.getElementById("startBtn").innerText = "Start Scanner";
 
-  setStatus("Starting scanner...");
+  setStatus("Scanner is not started.");
+
+  if(isIphoneDevice()){
+    return;
+  }
 
   await startScanner();
 }
