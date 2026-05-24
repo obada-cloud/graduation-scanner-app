@@ -434,25 +434,31 @@ async function startScanner(){
 }
 
 async function nextScan(){
+
   document.getElementById("resultBox").style.display = "none";
   document.getElementById("nextBtn").style.display = "none";
 
   lastQr = "";
   lastScan = 0;
-  busy = false;
 
-  if(!started){
-    await startScanner();
-    return;
-  }
+  busy = false;
+  started = false;
 
   try{
     if(scanner){
-      await scanner.resume();
+      await scanner.stop();
+      await scanner.clear();
     }
   }catch(e){}
 
-  setStatus("Ready for next scan.");
+  scanner = null;
+
+  document.getElementById("startBtn").disabled = false;
+  document.getElementById("startBtn").innerText = "Start Scanner";
+
+  setStatus("Starting scanner...");
+
+  await startScanner();
 }
 
 document.addEventListener("visibilitychange", async function(){
@@ -465,7 +471,8 @@ document.addEventListener("visibilitychange", async function(){
   }
 });
 
-window.addEventListener("load", function(){
+window.addEventListener("load", async function(){
+
   if(!RETURN_RESULT) return;
 
   showResult({
@@ -478,8 +485,22 @@ window.addEventListener("load", function(){
     } : null
   });
 
+  try{
+    if(scanner){
+      await scanner.stop();
+      await scanner.clear();
+    }
+  }catch(e){}
+
+  scanner = null;
+  started = false;
   busy = true;
+
+  document.getElementById("startBtn").disabled = false;
+  document.getElementById("startBtn").innerText = "Start Scanner";
+
   setStatus("Tap NEXT SCAN when ready.");
+
   cleanUrlAfterResult();
 });
 </script>
