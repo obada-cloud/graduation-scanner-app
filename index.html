@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Graduation QR Scanner</title>
 
@@ -15,15 +15,6 @@ body{
   font-family:Arial,Helvetica,sans-serif;
   background:#eef2f6;
   color:#173247;
-}
-
-.topBar{
-  background:#7B1E1E;
-  color:#fff;
-  padding:18px 16px;
-  text-align:center;
-  font-size:22px;
-  font-weight:900;
 }
 
 .wrap{
@@ -53,13 +44,18 @@ body{
 
 #reader{
   width:100%;
-  max-width:360px;
-  height:420px;
+  max-width:380px;
+  height:430px;
   margin:12px auto 0 auto;
   background:#eef2f5;
   border-radius:18px;
   overflow:hidden;
   border:3px solid #d9e0e7;
+}
+
+#reader video{
+  object-fit:cover !important;
+  border-radius:18px;
 }
 
 .resultBox{
@@ -81,6 +77,12 @@ body{
   background:#fdeaea;
   border-color:#c62828;
   color:#8e0000;
+}
+
+.processing{
+  background:#eef4fb;
+  border-color:#4f7e9e;
+  color:#173247;
 }
 
 .resultTitle{
@@ -109,7 +111,7 @@ body{
 <div class="wrap">
   <div class="card">
 
-    <button class="btn" onclick="startScanner()">
+    <button class="btn" id="startBtn" onclick="startScanner()">
       Start Scanner
     </button>
 
@@ -125,9 +127,11 @@ body{
       <div id="resultStudent" class="resultText"></div>
       <div id="resultCard" class="resultText"></div>
     </div>
+
     <button id="nextBtn" class="btn" style="display:none;margin-top:18px;font-size:22px;padding:20px;" onclick="nextScan()">
       NEXT SCAN
     </button>
+
   </div>
 </div>
 
@@ -140,9 +144,16 @@ let scanner = null;
 let busy = false;
 let lastQr = "";
 let lastScan = 0;
+let started = false;
 
 function setStatus(t){
   document.getElementById("statusText").innerText = t || "";
+}
+
+function vibratePattern(pattern){
+  try{
+    if(navigator.vibrate) navigator.vibrate(pattern);
+  }catch(e){}
 }
 
 function showResult(res){
@@ -172,18 +183,18 @@ function showResult(res){
 
   if(res.scanResult === "ALLOWED"){
     box.className = "resultBox allowed";
-    try {
-  if (navigator.vibrate) {
-    navigator.vibrate([180, 80, 180]);
-  }
-} catch(e) {}
+    vibratePattern([180,80,180]);
+  }else if(res.scanResult === "PROCESSING"){
+    box.className = "resultBox processing";
   }else{
     box.className = "resultBox denied";
-    if(navigator.vibrate) navigator.vibrate([400,120,400]);
+    vibratePattern([400,120,400]);
   }
 
-document.getElementById("nextBtn").style.display = "block";
-setStatus("Tap NEXT SCAN when ready.");
+  if(res.scanResult !== "PROCESSING"){
+    document.getElementById("nextBtn").style.display = "block";
+    setStatus("Tap NEXT SCAN when ready.");
+  }
 }
 
 function jsonpValidate(url){
@@ -191,93 +202,197 @@ function jsonpValidate(url){
     const callbackName =
       "scannerCallback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
 
+    const script = document.createElement("script");
+
+    const timeout = setTimeout(function(){
+      try{ delete window[callbackName]; }catch(e){}
+      try{ script.remove(); }catch(e){}
+      reject(new Error("Scanner API timeout. Please try again."));
+    }, 9000);
+
     window[callbackName] = function(data){
+      clearTimeout(timeout);
       delete window[callbackName];
       script.remove();
       resolve(data);
     };
 
-    const script = document.createElement("script");
-
     script.onerror = function(){
+      clearTimeout(timeout);
       delete window[callbackName];
       script.remove();
       reject(new Error("Scanner API connection failed."));
     };
 
     script.src = url + "&callback=" + encodeURIComponent(callbackName);
-
     document.body.appendChild(script);
   });
 }
 
-async function validateQr(qr)
-{ const now = Date.now(); 
- if(busy) return; if(qr === lastQr && (now - lastScan) < 1000){ return; } busy = true; lastQr = qr; 
- lastScan = now; setStatus("Validating QR code..."); 
- try{ if(!SESSION_TOKEN){ throw new Error("Missing secure scanner session. Open scanner from DLM page."); } 
-     const parts = String(qr || "").split("|"); const cardIdOnly = parts.length >= 2 ? parts[1] : String(qr || "").trim(); 
-     const url = APPS_SCRIPT_EXEC_URL + "?page=scanapi" + "&s=" + encodeURIComponent(SESSION_TOKEN) + "&cardId=" + encodeURIComponent(cardIdOnly); 
-     const data = await jsonpValidate(url); showResult(data); setStatus("Ready for next scan."); }
- catch(err){ showResult({ scanResult:"DENIED", reason:String(err && err.message ? err.message : err) }); setStatus("Validation failed."); } 
+async function validateQr(qr){
+  const now = Date.now();
+
+  if(qr === lastQr && (now - lastScan) < 2500){
+    busy = false;
+    return;
+  }
+
+  lastQr = qr;
+  lastScan = now;
+
+  setStatus("Processing...");
+
+  try{
+    if(!SESSION_TOKEN){
+      throw new Error("Missing secure scanner session. Open scanner from DLM page.");
+    }
+
+    const parts = String(qr || "").split("|");
+    const cardIdOnly = parts.length >= 2
+      ? parts[1]
+      : String(qr || "").trim();
+
+    if(!cardIdOnly){
+      throw new Error("Invalid QR code.");
+    }
+
+    showResult({
+      scanResult:"PROCESSING",
+      reason:"Validating card, please wait...",
+      card:null
+    });
+
+    const url =
+      APPS_SCRIPT_EXEC_URL +
+      "?page=scanapi" +
+      "&s=" + encodeURIComponent(SESSION_TOKEN) +
+      "&cardId=" + encodeURIComponent(cardIdOnly) +
+      "&t=" + encodeURIComponent(Date.now());
+
+    const data = await jsonpValidate(url);
+
+    showResult(data);
+    setStatus("Ready for next scan.");
+
+  }catch(err){
+    showResult({
+      scanResult:"DENIED",
+      reason:String(err && err.message ? err.message : err)
+    });
+    setStatus("Validation failed.");
+  }
 }
 
 async function startScanner(){
+  if(started) return;
+
   setStatus("Starting camera...");
+  document.getElementById("startBtn").disabled = true;
+  document.getElementById("startBtn").innerText = "Starting...";
 
-  if(scanner){
-    try{
-      await scanner.stop();
-      await scanner.clear();
-    }catch(e){}
-  }
-
-  scanner = new Html5Qrcode("reader");
-
-  const cameras = await Html5Qrcode.getCameras();
-
-  if(!cameras || !cameras.length){
-    throw new Error("No camera found.");
-  }
-
-  let cameraId = cameras[0].id;
-
-  for(let i = 0; i < cameras.length; i++){
-    const label = String(cameras[i].label || "").toLowerCase();
-
-    if(
-      label.includes("back") ||
-      label.includes("rear") ||
-      label.includes("environment")
-    ){
-      cameraId = cameras[i].id;
-      break;
+  try{
+    if(scanner){
+      try{
+        await scanner.stop();
+        await scanner.clear();
+      }catch(e){}
     }
-  }
 
-await scanner.start(
-  cameraId,
-  {
-    fps: 12,
-    qrbox: {
-      width: 300,
-      height: 300
+    scanner = new Html5Qrcode("reader", {
+      verbose:false
+    });
+
+    const cameras = await Html5Qrcode.getCameras();
+
+    if(!cameras || !cameras.length){
+      throw new Error("No camera found.");
     }
-  },
-  function(decodedText){
-    validateQr(decodedText);
-  }
-);
 
-  setStatus("Scanner ready.");
+    let cameraId = cameras[0].id;
+
+    for(let i = 0; i < cameras.length; i++){
+      const label = String(cameras[i].label || "").toLowerCase();
+
+      if(
+        label.includes("back") ||
+        label.includes("rear") ||
+        label.includes("environment")
+      ){
+        cameraId = cameras[i].id;
+        break;
+      }
+    }
+
+    await scanner.start(
+      cameraId,
+      {
+        fps: 20,
+        qrbox: {
+          width: 240,
+          height: 240
+        },
+        aspectRatio: 1.777778,
+        disableFlip: true
+      },
+      async function(decodedText){
+
+        if(busy) return;
+
+        busy = true;
+
+        try{
+          await scanner.pause(true);
+        }catch(e){}
+
+        validateQr(decodedText);
+      },
+      function(errorMessage){
+        // ignore scan-frame errors
+      }
+    );
+
+    started = true;
+    setStatus("Scanner ready.");
+    document.getElementById("startBtn").innerText = "Scanner Started";
+
+  }catch(err){
+    started = false;
+    busy = false;
+    document.getElementById("startBtn").disabled = false;
+    document.getElementById("startBtn").innerText = "Start Scanner";
+    showResult({
+      scanResult:"DENIED",
+      reason:String(err && err.message ? err.message : err)
+    });
+    setStatus("Camera failed to start.");
+  }
 }
 
-function nextScan(){
+async function nextScan(){
   document.getElementById("resultBox").style.display = "none";
   document.getElementById("nextBtn").style.display = "none";
+
+  lastQr = "";
   busy = false;
+
+  try{
+    if(scanner){
+      await scanner.resume();
+    }
+  }catch(e){}
+
   setStatus("Ready for next scan.");
 }
+
+document.addEventListener("visibilitychange", async function(){
+  if(document.hidden) return;
+
+  if(started && scanner && !busy){
+    try{
+      await scanner.resume();
+    }catch(e){}
+  }
+});
 </script>
 
 </body>
