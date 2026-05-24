@@ -313,6 +313,15 @@ async function validateQr(qr){
       "&cardId=" + encodeURIComponent(cardIdOnly) +
       "&t=" + encodeURIComponent(Date.now());
 
+    const isIphone =
+      /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if(isIphone){
+      window.location.href =
+        url.replace("?page=scanapi", "?page=scanvalidate");
+      return;
+    }
+
     const data = await jsonpValidate(url);
 
     showResult(data);
