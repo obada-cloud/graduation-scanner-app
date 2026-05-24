@@ -45,23 +45,17 @@ body{
 #reader{
   width:100%;
   max-width:430px;
-
   height:48vh;
   min-height:340px;
   max-height:520px;
-
   margin:12px auto 0 auto;
-
   background:#eef2f5;
   border-radius:22px;
   overflow:hidden;
-
   border:4px solid #d9e0e7;
-
   box-shadow:
     0 14px 28px rgba(0,0,0,.10),
     inset 0 1px 0 rgba(255,255,255,.5);
-
   position:relative;
 }
 
@@ -71,24 +65,19 @@ body{
   inset:0;
   border-radius:24px;
   pointer-events:none;
-  box-shadow:
-    inset 0 0 0 3px rgba(255,255,255,.25);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.25);
   z-index:2;
 }
 
 #reader video{
   width:100% !important;
   height:100% !important;
-
   object-fit:cover !important;
-
   border-radius:20px;
-
   transform:scale(1.01);
 }
 
 @media(max-width:700px){
-
   #reader{
     max-width:100%;
     height:46vh;
@@ -182,13 +171,25 @@ body{
 <script>
 const APPS_SCRIPT_EXEC_URL = "https://script.google.com/a/macros/inpsshakhbout.com/s/AKfycbwTweqxLbuJG9jogsH_05wl9SjM-amvPkciZ348YUe9qVWsqD7wTmnha_SrKUGYeBuj/exec";
 
-const SESSION_TOKEN = new URLSearchParams(window.location.search).get("s") || "";
+const PARAMS = new URLSearchParams(window.location.search);
+
+const SESSION_TOKEN = PARAMS.get("s") || "";
+
+const RETURN_RESULT = PARAMS.get("r") || "";
+const RETURN_REASON = PARAMS.get("reason") || "";
+const RETURN_STUDENT = PARAMS.get("student") || "";
+const RETURN_OWNER = PARAMS.get("owner") || "";
+const RETURN_CARD = PARAMS.get("card") || "";
 
 let scanner = null;
 let busy = false;
 let lastQr = "";
 let lastScan = 0;
 let started = false;
+
+function isIphoneDevice(){
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
 
 function setStatus(t){
   document.getElementById("statusText").innerText = t || "";
@@ -198,6 +199,17 @@ function vibratePattern(pattern){
   try{
     if(navigator.vibrate) navigator.vibrate(pattern);
   }catch(e){}
+}
+
+function cleanUrlAfterResult(){
+  if(!RETURN_RESULT) return;
+
+  const cleanUrl =
+    window.location.origin +
+    window.location.pathname +
+    "?s=" + encodeURIComponent(SESSION_TOKEN);
+
+  window.history.replaceState({}, document.title, cleanUrl);
 }
 
 function showResult(res){
@@ -214,8 +226,11 @@ function showResult(res){
   if(res.card){
     document.getElementById("resultStudent").innerText =
       (res.card.studentName || "") +
-      " • " +
-      (res.card.currentOwnerStudentNumber || "");
+      (
+        res.card.currentOwnerStudentNumber
+          ? " • " + res.card.currentOwnerStudentNumber
+          : ""
+      );
 
     document.getElementById("resultCard").innerText =
       "Card: " +
@@ -313,10 +328,7 @@ async function validateQr(qr){
       "&cardId=" + encodeURIComponent(cardIdOnly) +
       "&t=" + encodeURIComponent(Date.now());
 
-    const isIphone =
-      /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    if(isIphone){
+    if(isIphoneDevice()){
       window.location.href =
         url.replace("?page=scanapi", "?page=scanvalidate");
       return;
@@ -426,7 +438,13 @@ async function nextScan(){
   document.getElementById("nextBtn").style.display = "none";
 
   lastQr = "";
+  lastScan = 0;
   busy = false;
+
+  if(!started){
+    await startScanner();
+    return;
+  }
 
   try{
     if(scanner){
@@ -445,6 +463,24 @@ document.addEventListener("visibilitychange", async function(){
       await scanner.resume();
     }catch(e){}
   }
+});
+
+window.addEventListener("load", function(){
+  if(!RETURN_RESULT) return;
+
+  showResult({
+    scanResult: RETURN_RESULT,
+    reason: RETURN_REASON,
+    card: RETURN_CARD ? {
+      studentName: RETURN_STUDENT,
+      currentOwnerStudentNumber: RETURN_OWNER,
+      cardNumber: RETURN_CARD
+    } : null
+  });
+
+  busy = true;
+  setStatus("Tap NEXT SCAN when ready.");
+  cleanUrlAfterResult();
 });
 </script>
 
